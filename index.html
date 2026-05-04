@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PepeFinanzas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --surface2: #f2f0ec;
+    --border: #e4e0d8;
+    --text: #1a1a18;
+    --text2: #6b6860;
+    --text3: #9e9b94;
+    --green: #1a9e72;
+    --green-bg: #e8f7f1;
+    --red: #d44f2e;
+    --red-bg: #fceee9;
+    --blue: #2860b8;
+    --blue-bg: #e8effc;
+    --amber: #b87318;
+    --amber-bg: #fdf3e3;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  
+  /* Layout */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 0; flex-shrink: 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+  .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo h1 { font-size: 16px; font-weight: 600; color: var(--text); }
+  .sidebar-logo p { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .nav { padding: 12px 0; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 500; border-left: 3px solid transparent; transition: all .15s; }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--blue-bg); color: var(--blue); border-left-color: var(--blue); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-bottom { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text3); }
+  
+  .main { flex: 1; padding: 28px 32px; max-width: 1100px; overflow-x: hidden; }
+  .page { display: none; }
+  .page.active { display: block; }
+  
+  /* Header */
+  .page-header { margin-bottom: 24px; }
+  .page-header h2 { font-size: 22px; font-weight: 600; }
+  .page-header p { color: var(--text2); font-size: 13px; margin-top: 3px; }
+  
+  /* Metric cards */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .metric-value { font-size: 22px; font-weight: 600; }
+  .metric-value.green { color: var(--green); }
+  .metric-value.red { color: var(--red); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  
+  /* Form card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; margin-bottom: 22px; box-shadow: var(--shadow); }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .form-grid.cols2 { grid-template-columns: 1fr 1fr; }
+  .form-grid.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }
+  .field input, .field select { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 13px; transition: border-color .15s; outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--blue); background: var(--surface); }
+  .field input::placeholder { color: var(--text3); }
+  
+  .tipo-toggle { display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .tipo-btn { flex: 1; padding: 9px; text-align: center; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text2); background: var(--bg); border: none; transition: all .15s; }
+  .tipo-btn.active.ingreso { background: var(--green-bg); color: var(--green); }
+  .tipo-btn.active.egreso { background: var(--red-bg); color: var(--red); }
+  
+  .btn { padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:hover { background: #1e4d9a; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-success:hover { background: #13795a; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { background: var(--surface2); }
+  
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
+  
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--surface2); padding: 10px 14px; text-align: left; font-weight: 600; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  .group-row { background: var(--surface2) !important; }
+  .group-row td { font-weight: 600; font-size: 12px; color: var(--text2); padding: 7px 14px; }
+  
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge.ingreso { background: var(--green-bg); color: var(--green); }
+  .badge.egreso { background: var(--red-bg); color: var(--red); }
+  .cat-tag { display: inline-block; padding: 2px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 11px; color: var(--text2); }
+  .amount { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .amount.pos { color: var(--green); }
+  .amount.neg { color: var(--red); }
+  
+  .btn-del { background: none; border: none; cursor: pointer; color: var(--text3); padding: 4px 7px; border-radius: 4px; font-size: 14px; line-height: 1; }
+  .btn-del:hover { background: var(--red-bg); color: var(--red); }
+  
+  /* Filters */
+  .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filters select, .filters input { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 13px; }
+  .filters input[type=text] { flex: 1; min-width: 160px; }
+  .filter-label { font-size: 12px; font-weight: 600; color: var(--text2); }
+  
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+  .chart-wrap { position: relative; height: 240px; }
+  
+  /* Toast */
+  #toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: #fff; opacity: 0; transform: translateY(8px); transition: all .3s; pointer-events: none; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  
+  /* Resumen categorías */
+  .cat-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 10px; margin-bottom: 20px; }
+  .cat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .cat-card-name { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .cat-card-val { font-size: 17px; font-weight: 600; color: var(--red); }
+  .cat-card-val.inc { color: var(--green); }
+  
+  /* Month pills */
+  .month-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 16px; }
+  
+  /* Tabs  */
+  .sub-tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; margin-bottom: 20px; display: inline-flex; }
+  .sub-tab { padding: 7px 16px; border-radius: 5px; border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--text2); font-weight: 500; transition: all .15s; }
+  .sub-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  
+  /* Date column */
+  .date-col { white-space: nowrap; }
+  .date-day { font-size: 15px; font-weight: 700; color: var(--text); }
+  .date-month { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; }
+  
+  /* Empty */
+  .empty { padding: 40px; text-align: center; color: var(--text3); font-size: 14px; }
+  
+  @media (max-width: 700px) {
+    .shell { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; flex-direction: row; overflow-x: auto; }
+    .sidebar-logo, .sidebar-bottom { display: none; }
+    .nav { display: flex; padding: 0; }
+    .nav-item { border-left: none; border-bottom: 3px solid transparent; flex-direction: column; gap: 2px; padding: 10px 14px; font-size: 11px; }
+    .nav-item.active { border-bottom-color: var(--blue); border-left-color: transparent; }
+    .main { padding: 16px; }
+    .form-grid, .form-grid.cols4 { grid-template-columns: 1fr 1fr; }
+    .chart-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ===== LOGIN ===== */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 99999;
+    background: #0f1923;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Georgia', serif;
+  }
+  #login-screen.hidden { display: none; }
+
+  .login-bg {
+    position: absolute; inset: 0; overflow: hidden;
+  }
+  .login-bg::before {
+    content: '';
+    position: absolute; inset: -50%;
+    background: radial-gradient(ellipse at 30% 40%, rgba(40,96,184,0.18) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 70%, rgba(26,158,114,0.12) 0%, transparent 55%);
+    animation: bgpulse 8s ease-in-out infinite alternate;
+  }
+  @keyframes bgpulse {
+    from { transform: scale(1) rotate(0deg); }
+    to   { transform: scale(1.08) rotate(2deg); }
+  }
+  .login-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .login-card {
+    position: relative; z-index: 2;
+    width: 100%; max-width: 400px;
+    margin: 20px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    padding: 48px 40px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+    animation: cardin .5s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes cardin {
+    from { opacity:0; transform: translateY(24px) scale(.97); }
+    to   { opacity:1; transform: translateY(0) scale(1); }
+  }
+
+  .login-logo {
+    text-align: center; margin-bottom: 36px;
+  }
+  .login-logo .coin {
+    font-size: 44px; display: block; margin-bottom: 10px;
+    animation: spin 6s linear infinite;
+    filter: drop-shadow(0 0 16px rgba(40,96,184,0.6));
+  }
+  @keyframes spin {
+    0%,100% { transform: rotateY(0deg); }
+    50% { transform: rotateY(180deg); }
+  }
+  .login-logo h1 {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #e8effc 0%, #7aadff 50%, #1a9e72 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .login-logo p {
+    font-size: 12px; color: rgba(255,255,255,0.35);
+    font-family: -apple-system, sans-serif; letter-spacing: .08em; text-transform: uppercase;
+  }
+
+  .login-field { margin-bottom: 16px; }
+  .login-field label {
+    display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: rgba(255,255,255,0.4);
+    font-family: -apple-system, sans-serif; margin-bottom: 8px;
+  }
+  .login-field input {
+    width: 100%; padding: 13px 16px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; color: #fff; font-size: 14px;
+    font-family: -apple-system, sans-serif;
+    outline: none; transition: all .2s;
+  }
+  .login-field input::placeholder { color: rgba(255,255,255,0.2); }
+  .login-field input:focus {
+    border-color: rgba(40,96,184,0.7);
+    background: rgba(255,255,255,0.09);
+    box-shadow: 0 0 0 3px rgba(40,96,184,0.15);
+  }
+
+  .login-btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #2860b8, #1a9e72);
+    border: none; border-radius: 10px;
+    color: #fff; font-size: 14px; font-weight: 700;
+    font-family: -apple-system, sans-serif; letter-spacing: .03em;
+    cursor: pointer; margin-top: 8px;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .login-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(40,96,184,0.4); }
+  .login-btn:active { transform: translateY(0); }
+  .login-btn::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+  }
+
+  .login-error {
+    margin-top: 14px; padding: 10px 14px;
+    background: rgba(212,79,46,0.15); border: 1px solid rgba(212,79,46,0.3);
+    border-radius: 8px; color: #ff8a70; font-size: 12px;
+    font-family: -apple-system, sans-serif; text-align: center;
+    display: none;
+  }
+  .login-error.show { display: block; animation: shake .3s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  .login-footer {
+    text-align: center; margin-top: 28px;
+    font-size: 11px; color: rgba(255,255,255,0.18);
+    font-family: -apple-system, sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== PANTALLA DE LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-bg">
+    <div class="login-grid"></div>
+  </div>
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="coin">💰</span>
+      <h1>PepeFinanzas</h1>
+      <p>Control personal de gastos</p>
+    </div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="Tu usuario" autocomplete="username" />
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar →</button>
+    <div class="login-error" id="login-error">Usuario o contraseña incorrectos</div>
+    <div class="login-footer">Acceso privado · Solo uso personal</div>
+  </div>
+</div>
+<!-- ===== FIN LOGIN ===== -->
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>💰 PepeFinanzas</h1>
+      <p>Control personal de gastos</p>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showPage('inicio')">
+        <span class="nav-icon">🏠</span> Inicio
+      </div>
+      <div class="nav-item" onclick="showPage('agregar')">
+        <span class="nav-icon">➕</span> Agregar gasto
+      </div>
+      <div class="nav-item" onclick="showPage('movimientos')">
+        <span class="nav-icon">📋</span> Movimientos
+      </div>
+      <div class="nav-item" onclick="showPage('resumen')">
+        <span class="nav-icon">📊</span> Resumen
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      Datos guardados en tu navegador<br>
+      <button onclick="doLogout()" style="margin-top:8px;background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;padding:0;font-weight:600;">⬅ Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- INICIO -->
+    <div id="page-inicio" class="page active">
+      <div class="page-header">
+        <h2>Resumen general</h2>
+        <p id="fecha-hoy"></p>
+      </div>
+      <div class="metrics" id="metrics-inicio"></div>
+      <div class="card">
+        <div class="card-title">📅 Últimos movimientos</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th style="text-align:right">Monto</th>
+            </tr></thead>
+            <tbody id="tbody-recientes"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGREGAR -->
+    <div id="page-agregar" class="page">
+      <div class="page-header">
+        <h2>Agregar movimiento</h2>
+        <p>Registra un ingreso o gasto con fecha específica</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📝 Nuevo registro</div>
+        
+        <div style="margin-bottom:16px">
+          <div class="field" style="margin-bottom:10px"><label>Tipo de movimiento</label></div>
+          <div class="tipo-toggle">
+            <button class="tipo-btn active egreso" id="btn-egreso" onclick="setTipo('Egreso')">📤 Egreso / Gasto</button>
+            <button class="tipo-btn ingreso" id="btn-ingreso" onclick="setTipo('Ingreso')">📥 Ingreso</button>
+          </div>
+        </div>
+
+        <div class="form-grid cols4" style="margin-bottom:14px">
+          <div class="field">
+            <label>📅 Día</label>
+            <input type="number" id="f-dia" min="1" max="31" placeholder="1-31">
+          </div>
+          <div class="field">
+            <label>📆 Mes</label>
+            <select id="f-mes">
+              <option value="1">Enero</option><option value="2">Febrero</option>
+              <option value="3">Marzo</option><option value="4">Abril</option>
+              <option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option>
+              <option value="9">Setiembre</option><option value="10">Octubre</option>
+              <option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>📅 Año</label>
+            <select id="f-anio">
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>💵 Monto (S/)</label>
+            <input type="number" id="f-monto" placeholder="0.00" min="0" step="0.01">
+          </div>
+        </div>
+
+        <div class="form-grid cols2" style="margin-bottom:14px">
+          <div class="field">
+            <label>🏷️ Categoría</label>
+            <select id="f-cat"></select>
+          </div>
+          <div class="field">
+            <label>📝 Concepto / descripción</label>
+            <input type="text" id="f-concepto" placeholder="Ej: Comida semanal, luz, medicinas...">
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="agregarRegistro()">✅ Guardar registro</button>
+          <button class="btn btn-ghost" onclick="limpiarForm()">🔄 Limpiar</button>
+        </div>
+      </div>
+
+      <!-- Últimos 5 del día -->
+      <div class="card">
+        <div class="card-title">⚡ Registros recientes (últimos 10)</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Fecha</th><th>Tipo</th><th>Categoría</th><th>Concepto</th><th style="text-align:right">Monto</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-form-recientes"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTOS -->
+    <div id="page-movimientos" class="page">
+      <div class="page-header">
+        <h2>Todos los movimientos</h2>
+        <p>Filtra y consulta tus registros</p>
+      </div>
+
+      <div class="filters">
+        <span class="filter-label">Filtrar:</span>
+        <select id="fil-anio" onchange="renderMovimientos()">
+          <option value="">Todos los años</option>
+        </select>
+        <select id="fil-mes" onchange="renderMovimientos()">
+          <option value="">Todos los meses</option>
+        </select>
+        <select id="fil-tipo" onchange="renderMovimientos()">
+          <option value="">Ingreso y Egreso</option>
+          <option value="Ingreso">Solo Ingresos</option>
+          <option value="Egreso">Solo Egresos</option>
+        </select>
+        <select id="fil-cat" onchange="renderMovimientos()">
+          <option value="">Todas las categorías</option>
+        </select>
+        <input type="text" id="fil-buscar" placeholder="Buscar concepto..." oninput="renderMovimientos()">
+      </div>
+
+      <div id="mov-summary" style="margin-bottom:14px"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>Día</th><th>Tipo</th><th>Categoría</th><th>Concepto</th>
+            <th style="text-align:right">Presupuesto</th>
+            <th style="text-align:right">Monto</th><th></th>
+          </tr></thead>
+          <tbody id="tbody-movimientos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div id="page-resumen" class="page">
+      <div class="page-header">
+        <h2>Resumen y estadísticas</h2>
+      </div>
+
+      <div class="filters" style="margin-bottom:20px">
+        <span class="filter-label">Período:</span>
+        <select id="res-anio" onchange="renderResumen()">
+          <option value="">Todos los años</option>
+        </select>
+        <select id="res-mes" onchange="renderResumen()">
+          <option value="">Todos los meses</option>
+        </select>
+      </div>
+
+      <div class="metrics" id="res-metrics"></div>
+
+      <div class="chart-grid">
+        <div class="card" style="padding:16px 18px">
+          <div class="card-title" style="font-size:13px;margin-bottom:12px">📈 Ingresos vs Egresos por mes</div>
+          <div class="chart-wrap"><canvas id="chart-mensual" role="img" aria-label="Ingresos y egresos mensuales"></canvas></div>
+        </div>
+        <div class="card" style="padding:16px 18px">
+          <div class="card-title" style="font-size:13px;margin-bottom:12px">🍩 Egresos por categoría</div>
+          <div class="chart-wrap"><canvas id="chart-cats" role="img" aria-label="Egresos por categoría"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Detalle por categoría</div>
+        <div class="cat-summary" id="cat-summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📅 Balance por mes</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Mes / Año</th>
+              <th style="text-align:right">Ingresos</th>
+              <th style="text-align:right">Egresos</th>
+              <th style="text-align:right">Balance</th>
+              <th>Estado</th>
+            </tr></thead>
+            <tbody id="tbody-balance"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Setiembre','Octubre','Noviembre','Diciembre'];
+const CATS_EGRESO = ['Alimento','Servicios Básicos','Medicamentos','Gastos propios','Casa','Pasajes','Ahorro','Trabajo','Otros'];
+const CATS_INGRESO = ['Sueldo','Negocio','Saldo mes anterior','Otros'];
+
+const DATA_INICIAL = [
+["2024-12-15","Ingreso","Sueldo","Sueldo Mensual",1200,1200],
+["2024-12-15","Egreso","Alimento","Comida 2 semanas",350,350],
+["2024-12-17","Egreso","Gastos propios","Error de yape",178.3,178.3],
+["2024-12-18","Egreso","Pasajes","Casa a otorrino",26,26],
+["2024-12-20","Egreso","Gastos propios","Visita para ver la bicicleta",50,50],
+["2024-12-20","Egreso","Casa","Productos Temu",185,185],
+["2024-12-20","Egreso","Gastos propios","Producto Temu reposapies",55,55],
+["2024-12-21","Egreso","Servicios Básicos","Cable",40,40],
+["2024-12-21","Egreso","Alimento","Comida para navidad",50,50],
+["2024-12-21","Egreso","Medicamentos","Medicamentos Otorrino",64.9,64.9],
+["2025-01-03","Ingreso","Saldo mes anterior","Saldo del mes pasado",613.5,613.5],
+["2025-01-03","Egreso","Casa","Arreglo de lavadora",35,35],
+["2025-01-04","Egreso","Gastos propios","Mica para Tablet S9 FE",109.9,109.9],
+["2025-01-04","Egreso","Gastos propios","3 camisas",97.86,97.86],
+["2025-01-04","Egreso","Casa","Insecticida",93.9,93.9],
+["2025-01-04","Egreso","Gastos propios","Alcohol etilico",4.8,4.8],
+["2025-01-04","Egreso","Gastos propios","Retiro 100 soles",100,100],
+["2025-01-04","Egreso","Gastos propios","Cargador Caja",99,99],
+["2025-01-05","Egreso","Gastos propios","Retiro 60",60,60],
+["2025-01-05","Egreso","Medicamentos","Medicamentos Otorrino",34.9,34.9],
+["2025-01-06","Egreso","Alimento","Huevo semanal",30,30],
+["2025-01-06","Egreso","Casa","Celular papa",35,35],
+["2025-01-06","Egreso","Medicamentos","Inyección otorrino",6,6],
+["2025-01-06","Egreso","Alimento","Comida de esta semana",150,150],
+["2025-01-06","Egreso","Medicamentos","Medicinas papa",60,60],
+["2025-01-06","Egreso","Casa","Instalacion de accesorios en baño",20,20],
+["2025-01-06","Egreso","Alimento","Huevos y detergente",35,35],
+["2025-01-15","Ingreso","Sueldo","Sueldo Mensual",1210,1210],
+["2025-01-15","Egreso","Pasajes","Metropolitano y trabajo",60,60],
+["2025-01-15","Egreso","Alimento","Carne semanal",30,30],
+["2025-01-15","Egreso","Alimento","Comida semanal",350,350],
+["2025-01-16","Egreso","Casa","Instalación del cable",35,35],
+["2025-01-16","Egreso","Casa","Componentes para el cable",45,45],
+["2025-01-20","Egreso","Medicamentos","Papa medicamentos",63,63],
+["2025-01-20","Egreso","Medicamentos","Consulta",45,45],
+["2025-01-26","Egreso","Alimento","Maíz para pollos",6,6],
+["2025-01-26","Egreso","Alimento","Carne semanal",20,20],
+["2025-01-28","Egreso","Alimento","Carne y alimento",50,50],
+["2025-01-28","Egreso","Alimento","Huevos y detergente",30,30],
+["2025-01-30","Egreso","Medicamentos","Medicinas papa",60,60],
+["2025-11-01","Ingreso","Saldo mes anterior","Saldo mes anterior",-1922,-1922],
+["2025-11-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2025-11-01","Egreso","Alimento","Comida semanal",350,350],
+["2025-11-01","Egreso","Pasajes","Pasaje a mercado y semanal",40,40],
+["2025-11-01","Egreso","Servicios Básicos","Agua",57.6,57.6],
+["2025-11-01","Egreso","Servicios Básicos","Luz",151.5,151.5],
+["2025-11-01","Egreso","Servicios Básicos","Internet",70,70],
+["2025-11-01","Egreso","Servicios Básicos","Gas",48.1,48.1],
+["2025-11-01","Egreso","Alimento","Huevos, detergente y maíz",49,49],
+["2025-11-14","Ingreso","Sueldo","Sueldo",1210,1210],
+["2025-11-14","Egreso","Alimento","Comida semanal",350,350],
+["2025-11-14","Egreso","Pasajes","Pasaje a mercado y semanal",20,20],
+["2025-11-14","Egreso","Medicamentos","Consulta Médica Cardiólogo",120,120],
+["2025-11-14","Egreso","Medicamentos","A cuenta del dentista",500,500],
+["2025-11-15","Egreso","Alimento","Huevos y maíz",43,43],
+["2025-11-15","Egreso","Gastos propios","Recarga Celular",5,5],
+["2025-11-15","Egreso","Alimento","Pecanas, nueces, almendras",29,29],
+["2025-11-15","Egreso","Alimento","Yogurt Griego 1kg Tigo",17,17],
+["2025-11-15","Egreso","Alimento","Maní y Pistachos",8,8],
+["2025-11-15","Ingreso","Negocio","CTS",1600,1600],
+["2025-11-15","Egreso","Ahorro","Ahorro Obligado",800,800],
+["2025-11-15","Egreso","Casa","Toldo blanco",180,180],
+["2025-12-01","Ingreso","Saldo mes anterior","Saldo mes anterior",-1942,-1942],
+["2025-12-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2025-12-01","Egreso","Alimento","Comida semanal",350,350],
+["2025-12-01","Egreso","Pasajes","Pasaje a mercado y semanal",40,40],
+["2025-12-01","Egreso","Servicios Básicos","Agua",61.7,61.7],
+["2025-12-01","Egreso","Servicios Básicos","Luz",147.5,147.5],
+["2025-12-01","Egreso","Servicios Básicos","Internet",70,70],
+["2025-12-01","Egreso","Servicios Básicos","Gas",52.8,52.8],
+["2025-12-01","Egreso","Alimento","Huevos, detergente y maíz",35,35],
+["2025-12-13","Ingreso","Sueldo","Sueldo",1210,1210],
+["2025-12-13","Egreso","Alimento","Comida semanal",350,350],
+["2025-12-13","Egreso","Pasajes","Pasaje a mercado",40,40],
+["2025-12-13","Egreso","Alimento","Huevos",29.5,29.5],
+["2025-12-13","Egreso","Alimento","Maíz",12,12],
+["2025-12-13","Egreso","Medicamentos","Diente mamá",400,400],
+["2025-12-13","Egreso","Casa","Pintura (Sprite negro)",20,20],
+["2025-12-13","Egreso","Gastos propios","Recarga",5,5],
+["2025-12-13","Egreso","Gastos propios","Cámara web OBSBOT Tiny SE",305,305],
+["2025-12-19","Egreso","Gastos propios","Recarga",5,5],
+["2025-12-19","Egreso","Pasajes","Retiro para pasajes",40,40],
+["2025-12-20","Egreso","Medicamentos","Colágeno a papá",155,155],
+["2025-12-20","Egreso","Pasajes","Pasaje mercado",20,20],
+["2025-12-20","Egreso","Alimento","Huevos",29.5,29.5],
+["2025-12-20","Egreso","Alimento","Maíz",12,12],
+["2025-12-20","Egreso","Casa","Recojo de pavo",12,12],
+["2025-12-20","Egreso","Gastos propios","Recarga 15 soles",15,15],
+["2025-12-27","Egreso","Gastos propios","Reparación de audífono",39,39],
+["2025-12-27","Egreso","Alimento","Comida en la calle - pollo",40,40],
+["2025-12-27","Egreso","Alimento","Quesillo",30,30],
+["2026-01-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-01-01","Egreso","Alimento","Comida semanal",350,350],
+["2026-01-03","Egreso","Pasajes","Pasaje a mercado y semanal",40,40],
+["2026-01-03","Egreso","Servicios Básicos","Agua",80.8,80.8],
+["2026-01-03","Egreso","Servicios Básicos","Luz",143.5,143.5],
+["2026-01-03","Egreso","Servicios Básicos","Internet",70,70],
+["2026-01-03","Egreso","Servicios Básicos","Gas",49.5,49.5],
+["2026-01-03","Egreso","Alimento","Huevos",20,20],
+["2026-01-03","Egreso","Alimento","Maíz",10,10],
+["2026-01-06","Egreso","Medicamentos","Neurobion 5000",32.3,32.3],
+["2026-01-06","Egreso","Medicamentos","Enalapril, Ginkgo, Axona",111.7,111.7],
+["2026-01-06","Egreso","Medicamentos","Consulta estómago papá",65,65],
+["2026-01-06","Egreso","Gastos propios","Recarga sábado",10,10],
+["2026-01-06","Egreso","Gastos propios","Consulta otorrino Puente Piedra",40,40],
+["2026-01-06","Egreso","Gastos propios","Ceviche",10,10],
+["2026-01-15","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-01-15","Egreso","Alimento","Comida semanal",350,350],
+["2026-01-15","Egreso","Alimento","Almendras y frutos secos",19,19],
+["2026-01-15","Egreso","Pasajes","Retiro pasajes",20,20],
+["2026-01-15","Egreso","Alimento","Huevos",28.8,28.8],
+["2026-01-15","Egreso","Alimento","Maíz",10,10],
+["2026-01-15","Egreso","Gastos propios","Ceviche",10,10],
+["2026-01-15","Egreso","Medicamentos","Dientes mamá",400,400],
+["2026-01-15","Egreso","Gastos propios","Recarga 2 veces",10,10],
+["2026-01-15","Egreso","Medicamentos","Consulta gastro papá",65,65],
+["2026-01-15","Egreso","Pasajes","Pasaje a clínica Puente Piedra",19,19],
+["2026-01-15","Egreso","Medicamentos","Cita otorrino - Degraler y Rinoclenil",121.21,121.21],
+["2026-01-15","Egreso","Gastos propios","Glicinato de magnesio 200gr",45.5,45.5],
+["2026-01-15","Egreso","Gastos propios","Chip Bitel",10,10],
+["2026-01-15","Egreso","Gastos propios","Curso WhatsApp",25,25],
+["2026-02-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-02-01","Egreso","Alimento","Comida semanal",350,350],
+["2026-02-01","Egreso","Pasajes","Pasaje a mercado",12,12],
+["2026-02-01","Egreso","Servicios Básicos","Agua",65.4,65.4],
+["2026-02-01","Egreso","Servicios Básicos","Luz",171.5,171.5],
+["2026-02-01","Egreso","Servicios Básicos","Internet",70,70],
+["2026-02-01","Egreso","Servicios Básicos","Gas",52.9,52.9],
+["2026-02-01","Egreso","Alimento","Huevos",21.8,21.8],
+["2026-02-01","Egreso","Alimento","Maíz",10,10],
+["2026-02-07","Egreso","Medicamentos","Neurobion 5000 tabletas",34,34],
+["2026-02-07","Egreso","Medicamentos","Mamá diente",160,160],
+["2026-02-07","Egreso","Gastos propios","Álbum de monedas",40,40],
+["2026-02-14","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-02-14","Egreso","Alimento","Comida semanal",350,350],
+["2026-02-14","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-02-14","Egreso","Alimento","Huevos y maíz",35,35],
+["2026-02-14","Egreso","Gastos propios","Medicamento otorrino",78,78],
+["2026-02-14","Egreso","Gastos propios","Menú por lo del otorrino",26.8,26.8],
+["2026-02-14","Egreso","Ahorro","Ahorro",300,300],
+["2026-02-21","Egreso","Alimento","Comida semanal",350,350],
+["2026-02-21","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-02-21","Egreso","Alimento","Huevos",33,33],
+["2026-02-21","Egreso","Alimento","Maíz",12.5,12.5],
+["2026-02-21","Egreso","Gastos propios","Recarga",5,5],
+["2026-02-28","Egreso","Medicamentos","Mamá diente",160,160],
+["2026-02-28","Egreso","Gastos propios","Proteína Iso Whey",121,121],
+["2026-02-28","Egreso","Gastos propios","Recargas x3",15,15],
+["2026-02-28","Egreso","Gastos propios","Recarga",10,10],
+["2026-03-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-03-01","Egreso","Alimento","Comida semanal",350,350],
+["2026-03-01","Egreso","Pasajes","Pasaje a mercado",12,12],
+["2026-03-01","Egreso","Servicios Básicos","Agua",67.8,67.8],
+["2026-03-01","Egreso","Servicios Básicos","Luz",166.5,166.5],
+["2026-03-01","Egreso","Servicios Básicos","Internet",70,70],
+["2026-03-01","Egreso","Servicios Básicos","Gas",56.1,56.1],
+["2026-03-01","Egreso","Alimento","Huevos",35.5,35.5],
+["2026-03-01","Egreso","Alimento","Maíz",10,10],
+["2026-03-07","Egreso","Medicamentos","Frasco de plátano con miel de luz alfa",36,36],
+["2026-03-07","Egreso","Gastos propios","Ceviche",10,10],
+["2026-03-14","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-03-14","Egreso","Alimento","Comida semanal",350,350],
+["2026-03-14","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-03-14","Egreso","Alimento","Huevos",35.5,35.5],
+["2026-03-14","Egreso","Gastos propios","Medicamento otorrino",45,45],
+["2026-03-14","Egreso","Gastos propios","Recarga",10,10],
+["2026-03-14","Egreso","Gastos propios","3 Minoxidil + Dermaroller 0.5mm",125.8,125.8],
+["2026-03-14","Egreso","Gastos propios","Shampoo",66,66],
+["2026-03-14","Egreso","Gastos propios","Frasco abrilar ea575",40,40],
+["2026-03-14","Egreso","Ahorro","Ahorro",300,300],
+["2026-03-14","Egreso","Casa","Gastos de casa",310,310],
+["2026-03-21","Egreso","Alimento","Comida semanal",350,350],
+["2026-03-21","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-03-21","Egreso","Alimento","Huevos y maíz",35,35],
+["2026-03-21","Egreso","Medicamentos","Frasco de plátano con miel",36,36],
+["2026-03-28","Egreso","Pasajes","Pasaje a mercado",20,20],
+["2026-03-28","Egreso","Alimento","Huevos",35.5,35.5],
+["2026-03-28","Egreso","Alimento","Maíz",10,10],
+["2026-03-28","Egreso","Gastos propios","Juegos mobile",7.5,7.5],
+["2026-04-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-04-01","Egreso","Alimento","Comida semanal",350,350],
+["2026-04-01","Egreso","Pasajes","Pasaje a mercado",20,20],
+["2026-04-01","Egreso","Servicios Básicos","Agua",85.9,85.9],
+["2026-04-01","Egreso","Servicios Básicos","Luz",164,164],
+["2026-04-01","Egreso","Servicios Básicos","Internet",70,70],
+["2026-04-01","Egreso","Servicios Básicos","Gas",52.4,52.4],
+["2026-04-01","Egreso","Alimento","Huevos",36,36],
+["2026-04-01","Egreso","Alimento","Maíz",10,10],
+["2026-04-07","Egreso","Medicamentos","Medicamento para riñón mamá",30,30],
+["2026-04-07","Egreso","Medicamentos","Neurobion 5000mg",34.3,34.3],
+["2026-04-07","Egreso","Gastos propios","Recarga",5,5],
+["2026-04-07","Egreso","Gastos propios","Regalo para gemela",40,40],
+["2026-04-07","Egreso","Gastos propios","Mobile Legend",7.5,7.5],
+["2026-04-07","Egreso","Gastos propios","Recarga Kick",30,30],
+["2026-04-07","Egreso","Gastos propios","Mouse",30,30],
+["2026-04-14","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-04-14","Egreso","Alimento","Comida semanal",350,350],
+["2026-04-14","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-04-14","Egreso","Alimento","Huevos y maíz",35,35],
+["2026-04-14","Egreso","Ahorro","Ahorro",300,300],
+["2026-04-14","Egreso","Casa","Gastos de casa",168,168],
+["2026-04-21","Egreso","Alimento","Comida semanal",350,350],
+["2026-04-21","Egreso","Pasajes","Pasaje mercado",20,20],
+["2026-04-21","Egreso","Alimento","Huevos",36,36],
+["2026-04-21","Egreso","Alimento","Maíz",10,10],
+["2026-04-21","Egreso","Alimento","Botella de agua",7,7],
+["2026-04-28","Egreso","Casa","Gastos de pasaje",38,38],
+["2026-05-01","Ingreso","Sueldo","Sueldo",1210,1210],
+["2026-05-01","Egreso","Alimento","Comida semanal",350,350],
+["2026-05-01","Egreso","Pasajes","Pasaje a mercado",20,20],
+["2026-05-01","Egreso","Servicios Básicos","Internet",70,70],
+["2026-05-01","Egreso","Ahorro","Ahorro",300,300],
+["2026-05-01","Egreso","Casa","Gastos de casa",300,300],
+];
+
+let registros = JSON.parse(localStorage.getItem('finanzas_app_v3') || 'null');
+if (!registros) {
+  let id = 1;
+  registros = DATA_INICIAL.map(r => ({
+    id: id++,
+    fecha: r[0],
+    tipo: r[1],
+    categoria: r[2],
+    concepto: r[3],
+    presupuesto: Number(r[4]) || 0,
+    monto: Number(r[5]) || 0
+  }));
+  guardar();
+}
+let nextId = registros.length ? Math.max(...registros.map(e=>e.id))+1 : 1;
+let tipoActual = 'Egreso';
+let chartMes = null, chartCat = null;
+
+function guardar() {
+  localStorage.setItem('finanzas_app_v3', JSON.stringify(registros));
+}
+
+function showToast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#1a9e72' : '#d44f2e';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const pages = ['inicio','agregar','movimientos','resumen'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0) items[idx].classList.add('active');
+  if (page === 'inicio') renderInicio();
+  if (page === 'agregar') renderFormRecientes();
+  if (page === 'movimientos') { populateFilters(); renderMovimientos(); }
+  if (page === 'resumen') { populateResFilters(); renderResumen(); }
+}
+
+function setTipo(tipo) {
+  tipoActual = tipo;
+  document.getElementById('btn-egreso').className = 'tipo-btn' + (tipo==='Egreso' ? ' active egreso' : '');
+  document.getElementById('btn-ingreso').className = 'tipo-btn' + (tipo==='Ingreso' ? ' active ingreso' : '');
+  updateCats();
+}
+
+function updateCats() {
+  const cats = tipoActual === 'Ingreso' ? CATS_INGRESO : CATS_EGRESO;
+  document.getElementById('f-cat').innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function getMesNombre(fecha) {
+  const m = parseInt(fecha.split('-')[1]) - 1;
+  return MESES[m] || '';
+}
+
+function fmtFecha(fecha) {
+  const p = fecha.split('-');
+  return `${p[2]}/${p[1]}/${p[0]}`;
+}
+
+function fmtMes(fecha) {
+  const p = fecha.split('-');
+  return MESES[parseInt(p[1])-1] + ' ' + p[0];
+}
+
+function agregarRegistro() {
+  const dia = parseInt(document.getElementById('f-dia').value);
+  const mes = parseInt(document.getElementById('f-mes').value);
+  const anio = parseInt(document.getElementById('f-anio').value);
+  const monto = parseFloat(document.getElementById('f-monto').value);
+  const cat = document.getElementById('f-cat').value;
+  const concepto = document.getElementById('f-concepto').value.trim();
+
+  if (!dia || dia < 1 || dia > 31) { showToast('Ingresa un día válido (1-31)', false); return; }
+  if (isNaN(monto) || monto < 0) { showToast('Ingresa un monto válido', false); return; }
+  if (!concepto) { showToast('Escribe un concepto o descripción', false); return; }
+
+  const dd = String(dia).padStart(2,'0');
+  const mm = String(mes).padStart(2,'0');
+  const fecha = `${anio}-${mm}-${dd}`;
+
+  registros.unshift({ id: nextId++, fecha, tipo: tipoActual, categoria: cat, concepto, presupuesto: monto, monto });
+  guardar();
+  document.getElementById('f-dia').value = '';
+  document.getElementById('f-monto').value = '';
+  document.getElementById('f-concepto').value = '';
+  showToast(`✅ ${tipoActual} registrado: S/ ${monto.toFixed(2)}`);
+  renderFormRecientes();
+  renderInicio();
+}
+
+function limpiarForm() {
+  document.getElementById('f-dia').value = '';
+  document.getElementById('f-monto').value = '';
+  document.getElementById('f-concepto').value = '';
+}
+
+function eliminar(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  registros = registros.filter(r => r.id !== id);
+  guardar();
+  renderInicio();
+  renderFormRecientes();
+  renderMovimientos();
+  showToast('Eliminado');
+}
+
+function filaHtml(r, showDel=true) {
+  const p = r.fecha.split('-');
+  const mesNom = MESES[parseInt(p[1])-1];
+  const amtClass = r.tipo === 'Egreso' ? 'neg' : 'pos';
+  const sign = r.tipo === 'Egreso' ? '-' : '+';
+  return `<tr>
+    <td class="date-col">
+      <span style="font-size:13px;font-weight:600">${p[2]}/${p[1]}/${p[0]}</span><br>
+      <span style="font-size:10px;color:var(--text3)">${mesNom} ${p[0]}</span>
+    </td>
+    <td><span class="badge ${r.tipo.toLowerCase()}">${r.tipo}</span></td>
+    <td><span class="cat-tag">${r.categoria}</span></td>
+    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.concepto}">${r.concepto}</td>
+    <td class="amount ${amtClass}" style="text-align:right">${sign} S/ ${Math.abs(r.monto).toFixed(2)}</td>
+    ${showDel ? `<td><button class="btn-del" onclick="eliminar(${r.id})" title="Eliminar">×</button></td>` : '<td></td>'}
+  </tr>`;
+}
+
+function renderInicio() {
+  // Fecha
+  const hoy = new Date();
+  document.getElementById('fecha-hoy').textContent = `Hoy: ${hoy.getDate()} de ${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
+
+  // Métricas del mes actual
+  const ym = hoy.toISOString().slice(0,7);
+  const delMes = registros.filter(r => r.fecha.startsWith(ym));
+  const inc = delMes.filter(r=>r.tipo==='Ingreso'&&r.monto>0).reduce((a,r)=>a+r.monto,0);
+  const exp = delMes.filter(r=>r.tipo==='Egreso').reduce((a,r)=>a+r.monto,0);
+  const bal = inc - exp;
+  const mesLabel = MESES[hoy.getMonth()] + ' ' + hoy.getFullYear();
+
+  document.getElementById('metrics-inicio').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Ingresos ${mesLabel}</div>
+      <div class="metric-value green">S/ ${inc.toFixed(2)}</div>
+      <div class="metric-sub">${delMes.filter(r=>r.tipo==='Ingreso').length} registros</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Egresos ${mesLabel}</div>
+      <div class="metric-value red">S/ ${exp.toFixed(2)}</div>
+      <div class="metric-sub">${delMes.filter(r=>r.tipo==='Egreso').length} registros</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Balance ${mesLabel}</div>
+      <div class="metric-value ${bal>=0?'green':'red'}">S/ ${bal.toFixed(2)}</div>
+      <div class="metric-sub">${bal>=0?'Positivo ✓':'Negativo ✗'}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Total registros</div>
+      <div class="metric-value" style="color:var(--blue)">${registros.length}</div>
+      <div class="metric-sub">En toda la historia</div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('tbody-recientes');
+  const recent = [...registros].sort((a,b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).slice(0,20);
+  tbody.innerHTML = recent.length ? recent.map(r=>filaHtml(r,false)).join('') : '<tr><td colspan="5" class="empty">Sin registros aún</td></tr>';
+}
+
+function renderFormRecientes() {
+  const tbody = document.getElementById('tbody-form-recientes');
+  const items = [...registros].sort((a,b) => b.fecha.localeCompare(a.fecha) || b.id - a.id).slice(0,10);
+  tbody.innerHTML = items.length ? items.map(r=>filaHtml(r,true)).join('') : '<tr><td colspan="6" class="empty">Sin registros aún</td></tr>';
+}
+
+function populateFilters() {
+  const anios = [...new Set(registros.map(r=>r.fecha.slice(0,4)))].sort((a,b)=>b-a);
+  const cats = [...new Set(registros.map(r=>r.categoria))].sort();
+
+  const fa = document.getElementById('fil-anio');
+  const cur = fa.value;
+  fa.innerHTML = '<option value="">Todos los años</option>' + anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  fa.value = cur;
+
+  const fm = document.getElementById('fil-mes');
+  const mv = fm.value;
+  fm.innerHTML = '<option value="">Todos los meses</option>' + MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  fm.value = mv;
+
+  const fc = document.getElementById('fil-cat');
+  const cv = fc.value;
+  fc.innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  fc.value = cv;
+}
+
+function renderMovimientos() {
+  const anio = document.getElementById('fil-anio').value;
+  const mes = document.getElementById('fil-mes').value;
+  const tipo = document.getElementById('fil-tipo').value;
+  const cat = document.getElementById('fil-cat').value;
+  const buscar = document.getElementById('fil-buscar').value.toLowerCase();
+
+  let fil = registros.filter(r => {
+    if (anio && !r.fecha.startsWith(anio)) return false;
+    if (mes && parseInt(r.fecha.split('-')[1]) !== parseInt(mes)) return false;
+    if (tipo && r.tipo !== tipo) return false;
+    if (cat && r.categoria !== cat) return false;
+    if (buscar && !r.concepto.toLowerCase().includes(buscar)) return false;
+    return true;
+  });
+
+  const inc = fil.filter(r=>r.tipo==='Ingreso'&&r.monto>0).reduce((a,r)=>a+r.monto,0);
+  const exp = fil.filter(r=>r.tipo==='Egreso').reduce((a,r)=>a+r.monto,0);
+  document.getElementById('mov-summary').innerHTML = `
+    <span style="font-size:13px;color:var(--text2)">${fil.length} registros &nbsp;·&nbsp; </span>
+    <span class="amount pos">+S/ ${inc.toFixed(2)}</span>
+    <span style="color:var(--text3)"> ingresos &nbsp;·&nbsp; </span>
+    <span class="amount neg">-S/ ${exp.toFixed(2)}</span>
+    <span style="color:var(--text3)"> egresos &nbsp;·&nbsp; </span>
+    <span style="font-weight:600;color:${(inc-exp)>=0?'var(--green)':'var(--red)'}">Balance: S/ ${(inc-exp).toFixed(2)}</span>
+  `;
+
+  const tbody = document.getElementById('tbody-movimientos');
+  if (!fil.length) { tbody.innerHTML='<tr><td colspan="8" class="empty">Sin resultados</td></tr>'; return; }
+
+  // Group by month
+  const grupos = {};
+  fil.forEach(r => {
+    const key = r.fecha.slice(0,7);
+    if (!grupos[key]) grupos[key] = [];
+    grupos[key].push(r);
+  });
+
+  let html = '';
+  Object.keys(grupos).sort((a,b)=>b.localeCompare(a)).forEach(key => {
+    const g = grupos[key];
+    const [y, m] = key.split('-');
+    const mesNom = MESES[parseInt(m)-1];
+    const gi = g.filter(r=>r.tipo==='Ingreso'&&r.monto>0).reduce((a,r)=>a+r.monto,0);
+    const ge = g.filter(r=>r.tipo==='Egreso').reduce((a,r)=>a+r.monto,0);
+    html += `<tr class="group-row"><td colspan="5">${mesNom} ${y} — ${g.length} registros</td>
+      <td style="text-align:right" colspan="2"><span class="amount pos">+S/${gi.toFixed(0)}</span> / <span class="amount neg">-S/${ge.toFixed(0)}</span></td><td></td></tr>`;
+    g.forEach(r => {
+      const p = r.fecha.split('-');
+      const amtClass = r.tipo==='Egreso'?'neg':'pos';
+      const sign = r.tipo==='Egreso'?'-':'+';
+      html += `<tr>
+        <td class="date-col"><span style="font-weight:600">${p[2]}/${p[1]}/${p[0]}</span></td>
+        <td style="font-size:11px;color:var(--text3)">${MESES[parseInt(p[1])-1]} ${p[0]}</td>
+        <td><span class="badge ${r.tipo.toLowerCase()}">${r.tipo}</span></td>
+        <td><span class="cat-tag">${r.categoria}</span></td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.concepto}">${r.concepto}</td>
+        <td class="amount" style="text-align:right;color:var(--text3)">S/ ${r.presupuesto.toFixed(2)}</td>
+        <td class="amount ${amtClass}" style="text-align:right">${sign} S/ ${Math.abs(r.monto).toFixed(2)}</td>
+        <td><button class="btn-del" onclick="eliminar(${r.id})">×</button></td>
+      </tr>`;
+    });
+  });
+  tbody.innerHTML = html;
+}
+
+function populateResFilters() {
+  const anios = [...new Set(registros.map(r=>r.fecha.slice(0,4)))].sort((a,b)=>b-a);
+  const ra = document.getElementById('res-anio');
+  const rv = ra.value;
+  ra.innerHTML = '<option value="">Todos los años</option>' + anios.map(a=>`<option value="${a}">${a}</option>`).join('');
+  ra.value = rv;
+
+  const rm = document.getElementById('res-mes');
+  const rmv = rm.value;
+  rm.innerHTML = '<option value="">Todos los meses</option>' + MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  rm.value = rmv;
+}
+
+function renderResumen() {
+  const anio = document.getElementById('res-anio').value;
+  const mes = document.getElementById('res-mes').value;
+
+  let fil = registros.filter(r => {
+    if (anio && !r.fecha.startsWith(anio)) return false;
+    if (mes && parseInt(r.fecha.split('-')[1]) !== parseInt(mes)) return false;
+    return true;
+  });
+
+  const inc = fil.filter(r=>r.tipo==='Ingreso'&&r.monto>0).reduce((a,r)=>a+r.monto,0);
+  const exp = fil.filter(r=>r.tipo==='Egreso').reduce((a,r)=>a+r.monto,0);
+  const bal = inc - exp;
+  const n = fil.length;
+
+  document.getElementById('res-metrics').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Total ingresos</div>
+      <div class="metric-value green">S/ ${inc.toFixed(2)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Total egresos</div>
+      <div class="metric-value red">S/ ${exp.toFixed(2)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Balance neto</div>
+      <div class="metric-value ${bal>=0?'green':'red'}">S/ ${bal.toFixed(2)}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Registros</div>
+      <div class="metric-value" style="color:var(--blue)">${n}</div>
+    </div>
+  `;
+
+  // Chart por mes
+  const mesData = {};
+  fil.forEach(r => {
+    const ym = r.fecha.slice(0,7);
+    if (!mesData[ym]) mesData[ym] = {inc:0, exp:0};
+    if (r.tipo==='Ingreso'&&r.monto>0) mesData[ym].inc += r.monto;
+    if (r.tipo==='Egreso') mesData[ym].exp += r.monto;
+  });
+  const ymKeys = Object.keys(mesData).sort();
+  const labMes = ymKeys.map(k => { const p=k.split('-'); return MESES[parseInt(p[1])-1].slice(0,3)+' '+p[0].slice(2); });
+
+  if (chartMes) chartMes.destroy();
+  chartMes = new Chart(document.getElementById('chart-mensual').getContext('2d'), {
+    type: 'bar',
+    data: { labels: labMes, datasets: [
+      { label:'Ingresos', data: ymKeys.map(k=>Math.round(mesData[k].inc)), backgroundColor:'#1a9e72', borderRadius:4 },
+      { label:'Egresos', data: ymKeys.map(k=>Math.round(mesData[k].exp)), backgroundColor:'#d44f2e', borderRadius:4 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ x:{ticks:{autoSkip:false, maxRotation:45, font:{size:10}}}, y:{ticks:{callback:v=>'S/'+v}} } }
+  });
+
+  // Chart por categoría
+  const catData = {};
+  fil.filter(r=>r.tipo==='Egreso').forEach(r => {
+    catData[r.categoria] = (catData[r.categoria]||0) + r.monto;
+  });
+  const catKeys = Object.keys(catData).sort((a,b)=>catData[b]-catData[a]);
+  const COLORS = ['#2860b8','#d44f2e','#1a9e72','#b87318','#534AB7','#993C1D','#0F6E56','#3B6D11','#993556','#6b6860'];
+
+  if (chartCat) chartCat.destroy();
+  chartCat = new Chart(document.getElementById('chart-cats').getContext('2d'), {
+    type: 'doughnut',
+    data: { labels: catKeys, datasets: [{ data: catKeys.map(k=>Math.round(catData[k])), backgroundColor: COLORS.slice(0,catKeys.length), borderWidth:2, borderColor:'#fff' }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:11}, boxWidth:10, padding:8 } } } }
+  });
+
+  // Detalle categorías
+  document.getElementById('cat-summary-grid').innerHTML = catKeys.map(c => `
+    <div class="cat-card">
+      <div class="cat-card-name">${c}</div>
+      <div class="cat-card-val">S/ ${catData[c].toFixed(2)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${((catData[c]/exp)*100).toFixed(1)}% del total</div>
+    </div>
+  `).join('') || '<p style="color:var(--text3);font-size:13px">Sin egresos en el período</p>';
+
+  // Balance por mes
+  const tbody = document.getElementById('tbody-balance');
+  tbody.innerHTML = ymKeys.sort((a,b)=>b.localeCompare(a)).map(k => {
+    const [y,m] = k.split('-');
+    const i = mesData[k].inc;
+    const e = mesData[k].exp;
+    const b = i-e;
+    return `<tr>
+      <td style="font-weight:600">${MESES[parseInt(m)-1]} ${y}</td>
+      <td class="amount pos" style="text-align:right">S/ ${i.toFixed(2)}</td>
+      <td class="amount neg" style="text-align:right">S/ ${e.toFixed(2)}</td>
+      <td class="amount ${b>=0?'pos':'neg'}" style="text-align:right;font-weight:600">S/ ${b.toFixed(2)}</td>
+      <td><span class="badge ${b>=0?'ingreso':'egreso'}">${b>=0?'✓ Positivo':'✗ Negativo'}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">Sin datos</td></tr>';
+}
+
+// Init
+const hoy = new Date();
+document.getElementById('f-dia').value = hoy.getDate();
+document.getElementById('f-mes').value = hoy.getMonth()+1;
+document.getElementById('f-anio').value = hoy.getFullYear();
+updateCats();
+renderInicio();
+
+// ===== LOGIN =====
+// Cambia estas credenciales por las que quieras:
+const USUARIO = 'pepe';
+const CONTRASENA = 'finanzas2024';
+const SESSION_KEY = 'pepefinanzas_auth';
+
+function checkSession() {
+  if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
+    document.getElementById('login-screen').classList.add('hidden');
+  }
+}
+
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-error');
+  if (u === USUARIO && p === CONTRASENA) {
+    sessionStorage.setItem(SESSION_KEY, 'ok');
+    document.getElementById('login-screen').classList.add('hidden');
+    err.classList.remove('show');
+  } else {
+    err.classList.remove('show');
+    void err.offsetWidth; // reflow para re-animar
+    err.classList.add('show');
+    document.getElementById('login-pass').value = '';
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+// Permitir Enter para hacer login
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('login-user').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-pass').focus();
+});
+
+checkSession();
+</script>
+</body>
+</html>
