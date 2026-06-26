@@ -196,12 +196,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .qc-tipo.egreso{background:var(--red-bg);color:var(--red)}
 .qc-tipo.ingreso{background:var(--green-bg);color:var(--green)}
 .qc-cat{font-size:10px;color:var(--text3);margin-bottom:7px}
-.qc-row{display:flex;gap:5px;align-items:center}
-.qc-input{flex:1;padding:6px 8px;border:1.5px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);font-size:13px;font-weight:700;font-family:var(--mono);outline:none;transition:var(--transition);min-width:0}
+.qc-row{display:flex;gap:6px;align-items:center;margin-bottom:2px}
+.qc-input{flex:1;padding:7px 8px;border:1.5px solid var(--border);border-radius:var(--radius-xs);background:var(--bg);color:var(--text);font-size:14px;font-weight:800;font-family:var(--mono);outline:none;transition:var(--transition);min-width:0}
 .qc-input:focus{border-color:var(--blue);background:var(--surface)}
 .qc-btn{padding:6px 10px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;cursor:pointer;font-weight:800;transition:var(--transition);flex-shrink:0;line-height:1}
 .qc-btn:hover{background:var(--green2)}
 .qc-btn:active{transform:scale(.9)}
+.qc-save-btn{width:100%;margin-top:8px;padding:7px 10px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-xs);font-size:12px;font-weight:800;cursor:pointer;font-family:var(--font);transition:var(--transition);letter-spacing:.02em}
+.qc-save-btn:hover{background:var(--green2);transform:translateY(-1px);box-shadow:0 3px 10px rgba(22,163,106,.3)}
+.qc-save-btn:active{transform:scale(.97)}
 @keyframes flashSuccess{0%,100%{background:var(--surface2)}45%{background:var(--green-light);border-color:var(--green)}}
 .qc-flash{animation:flashSuccess .7s ease}
 
@@ -490,7 +493,7 @@ tbody tr:hover .row-actions{opacity:1}
         <!-- QUICK ADD -->
         <div class="card">
           <div class="card-title">
-            <div class="card-title-left">⚡ Registro rápido</div>
+            <div class="card-title-left">⚡ Registro rápido — plantillas</div>
             <button class="btn btn-ghost btn-sm" onclick="showPage('plantillas')">Gestionar →</button>
           </div>
           <div class="quick-grid" id="quick-grid"></div>
@@ -904,7 +907,11 @@ function save(){
 async function syncCloud(uid){
   try{await window._fb.save(uid,registros);setSyncStatus('synced');}catch(e){setSyncStatus('offline');}
 }
-function savePlantillas(){localStorage.setItem(KEY_PLANT,JSON.stringify(plantillas));}
+function savePlantillas(){
+  localStorage.setItem(KEY_PLANT,JSON.stringify(plantillas));
+  // Always keep Inicio quick grid in sync
+  renderPlantillasQuick();
+}
 
 // ============================================================
 // SYNC STATUS
@@ -1036,10 +1043,11 @@ function renderPlantillasQuick(){
       </div>
       <div class="qc-cat">${p.cat}</div>
       <div class="qc-row">
+        <span style="font-size:10px;color:var(--text3);font-weight:700">S/</span>
         <input class="qc-input" type="number" id="qi-${p.id}" value="${p.monto.toFixed(0)}" min="0" step="1"
           onkeydown="if(event.key==='Enter')quickAdd(${p.id})" onfocus="this.select()" placeholder="${p.monto}">
-        <button class="qc-btn" onclick="quickAdd(${p.id})">✓</button>
       </div>
+      <button class="qc-save-btn" onclick="quickAdd(${p.id})">✅ Guardar registro</button>
     </div>`).join('');
 }
 function quickAdd(id){
@@ -1052,6 +1060,7 @@ function quickAdd(id){
   const card=document.getElementById('qc-'+id);card.classList.add('qc-flash');
   setTimeout(()=>card.classList.remove('qc-flash'),800);
   input.value=pt.monto.toFixed(0);
+  // Full refresh: metrics + recent table + meta banner
   renderInicioMetrics();
   toast(`✅ ${pt.nombre} — S/ ${monto.toFixed(2)}`);
 }
@@ -1379,6 +1388,7 @@ function renderResumen(){
 // PLANTILLAS
 // ============================================================
 function renderPlantillas(){
+  // Sync quick grid in Inicio whenever plantillas change
   renderPlantillasQuick();
   const renderGrid=(id,tipo)=>{
     const grid=document.getElementById(id);if(!grid)return;
