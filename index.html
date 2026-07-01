@@ -842,15 +842,19 @@ function initApp(){
   if(sess==='local'){loadLocal();setUIUser(null);hideLogin();return;}
   const tryFB=()=>{
     if(window._fb){
+      let _authLoaded=false;
       window._fb.onAuth(async user=>{
         if(user&&user.uid){
           currentUser=user;isGoogle=true;
           sessionStorage.setItem(KEY_AUTH,'google');
           console.log('👤 Usuario autenticado:',user.email,'uid:',user.uid);
-          await loadFirebase(user.uid);
+          if(!_authLoaded){
+            _authLoaded=true;
+            await loadFirebase(user.uid);
+          }
           setUIUser(user);hideLogin();
         } else if(sessionStorage.getItem(KEY_AUTH)!=='local'){
-          currentUser=null;isGoogle=false;
+          currentUser=null;isGoogle=false;_authLoaded=false;
           showLogin();
         }
       });
@@ -906,29 +910,38 @@ function setUIUser(user){
 // ============================================================
 async function loadFirebase(uid){
   setSyncStatus('syncing');
-  // Always load local first so UI shows something immediately
-  loadLocalData();
-  renderAll();
   try{
-    console.log('🔄 Cargando de Firebase...');
-    const cloudData=await window._fb.load(uid);
-    if(cloudData && Array.isArray(cloudData) && cloudData.length>0){
-      // Cloud has data - use it
-      registros=cloudData;
+    // Load from cloud - single source of truth
+    const cloudData = await window._fb.load(uid);
+    const localRaw = localStorage.getItem('finanzas_app_v3');
+    const localData = localRaw ? JSON.parse(localRaw) : [];
+
+    if(cloudData && Array.isArray(cloudData) && cloudData.length > 0){
+      // Cloud wins if it has data
+      registros = cloudData;
+      // Keep local in sync too
+      localStorage.setItem('finanzas_app_v3', JSON.stringify(cloudData));
       console.log('✅ Firebase:',cloudData.length,'registros');
+    } else if(localData.length > 0){
+      // Local has data, cloud is empty — upload local to cloud
+      registros = localData;
+      await window._fb.save(uid, localData);
+      console.log('☁️ Local subido a nube:',localData.length,'registros');
+      toast('☁️ Datos sincronizados: '+localData.length+' registros');
     } else {
-      // Cloud empty - push local data up
-      console.log('ℹ️ Nube vacía, subiendo datos locales:',registros.length,'registros');
-      if(registros.length>0) await syncCloud(uid);
+      registros = [];
     }
-    nextId=registros.length?Math.max(...registros.map(r=>r.id))+1:1;
+    nextId = registros.length ? Math.max(...registros.map(r=>r.id))+1 : 1;
     renderAll();
     setSyncStatus('synced');
   }catch(e){
     console.error('❌ Error Firebase:',e.message);
-    setSyncStatus('offline');
-    // Still show local data
+    // Fallback to local
+    const localRaw = localStorage.getItem('finanzas_app_v3');
+    registros = localRaw ? JSON.parse(localRaw) : [];
+    nextId = registros.length ? Math.max(...registros.map(r=>r.id))+1 : 1;
     renderAll();
+    setSyncStatus('offline');
   }
 }
 function loadLocal(){loadLocalData();renderAll();}
@@ -1570,6 +1583,44 @@ function importarJSON(input){
 // ============================================================
 // AJUSTES
 // ============================================================
+async function forzarSync(){
+  const res = document.getElementById('sync-resultado');
+  if(!isGoogle||!currentUser){res.textContent='⚠️ Debes estar conectado con Google.';res.style.color='var(--amber)';return;}
+  res.textContent='⏳ Subiendo datos...';
+  try{
+    await window._fb.save(currentUser.uid, registros);
+    res.textContent='✅ '+registros.length+' registros subidos a la nube correctamente.';
+    res.style.color='var(--green)';
+    setSyncStatus('synced');
+    toast('☁️ Datos subidos: '+registros.length+' registros');
+  }catch(e){
+    res.textContent='❌ Error: '+e.message;
+    res.style.color='var(--red)';
+  }
+}
+async function forzarBajarNube(){
+  const res = document.getElementById('sync-resultado');
+  if(!isGoogle||!currentUser){res.textContent='⚠️ Debes estar conectado con Google.';res.style.color='var(--amber)';return;}
+  res.textContent='⏳ Bajando datos de la nube...';
+  try{
+    const d = await window._fb.load(currentUser.uid);
+    if(d && d.length > 0){
+      registros = d;
+      nextId = registros.length ? Math.max(...registros.map(r=>r.id))+1 : 1;
+      localStorage.setItem('finanzas_app_v3', JSON.stringify(registros));
+      renderAll();
+      res.textContent='✅ '+registros.length+' registros bajados de la nube.';
+      res.style.color='var(--green)';
+      toast('⬇️ Datos bajados: '+registros.length+' registros');
+    } else {
+      res.textContent='ℹ️ La nube está vacía. Usa "Subir datos" primero.';
+      res.style.color='var(--amber)';
+    }
+  }catch(e){
+    res.textContent='❌ Error: '+e.message;
+    res.style.color='var(--red)';
+  }
+}
 function cambiarCreds(){
   const u=document.getElementById('new-user').value.trim();const p=document.getElementById('new-pass').value;
   if(!u||!p){toast('Completa usuario y contraseña',false);return;}
