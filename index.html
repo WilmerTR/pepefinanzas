@@ -32,8 +32,19 @@
     signIn: () => signInWithPopup(auth, provider),
     signOut: () => signOut(auth),
     onAuth: (cb) => onAuthStateChanged(auth, cb),
-    save: async (uid, data) => await setDoc(doc(db,'usuarios',uid),{registros:JSON.stringify(data),updated:new Date().toISOString()}),
-    load: async (uid) => { const s=await getDoc(doc(db,'usuarios',uid)); return s.exists()?JSON.parse(s.data().registros):null; }
+    save: async (uid, data) => {
+      if(!uid) throw new Error('No uid');
+      const payload = { registros: JSON.stringify(data), updated: new Date().toISOString(), count: data.length };
+      await setDoc(doc(db, 'usuarios', uid), payload);
+      return true;
+    },
+    load: async (uid) => {
+      if(!uid) return null;
+      const snap = await getDoc(doc(db, 'usuarios', uid));
+      if(!snap.exists()) return null;
+      const raw = snap.data().registros;
+      return raw ? JSON.parse(raw) : null;
+    }
   };
   window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -832,8 +843,16 @@ function initApp(){
   const tryFB=()=>{
     if(window._fb){
       window._fb.onAuth(async user=>{
-        if(user){currentUser=user;isGoogle=true;sessionStorage.setItem(KEY_AUTH,'google');await loadFirebase(user.uid);setUIUser(user);hideLogin();setSyncStatus('synced');}
-        else if(sessionStorage.getItem(KEY_AUTH)!=='local') showLogin();
+        if(user&&user.uid){
+          currentUser=user;isGoogle=true;
+          sessionStorage.setItem(KEY_AUTH,'google');
+          console.log('👤 Usuario autenticado:',user.email,'uid:',user.uid);
+          await loadFirebase(user.uid);
+          setUIUser(user);hideLogin();
+        } else if(sessionStorage.getItem(KEY_AUTH)!=='local'){
+          currentUser=null;isGoogle=false;
+          showLogin();
+        }
       });
     }else setTimeout(tryFB,200);
   };
@@ -873,7 +892,7 @@ function setUIUser(user){
     const av=document.getElementById('user-avatar');
     if(user.photoURL)av.innerHTML=`<img src="${user.photoURL}" alt="">`;
     else av.textContent=(user.displayName||'U')[0].toUpperCase();
-    document.getElementById('sync-label').textContent='☁️ Nube activa';
+    document.getElementById('sync-label').textContent='☁️ Google · Nube activa';
   }else{
     document.getElementById('user-name').textContent='Pepe';
     document.getElementById('user-role').textContent='Cerrar sesión';
@@ -887,12 +906,30 @@ function setUIUser(user){
 // ============================================================
 async function loadFirebase(uid){
   setSyncStatus('syncing');
+  // Always load local first so UI shows something immediately
+  loadLocalData();
+  renderAll();
   try{
-    const d=await window._fb.load(uid);
-    if(d){registros=d;}else{loadLocalData();await syncCloud(uid);}
+    console.log('🔄 Cargando de Firebase...');
+    const cloudData=await window._fb.load(uid);
+    if(cloudData && Array.isArray(cloudData) && cloudData.length>0){
+      // Cloud has data - use it
+      registros=cloudData;
+      console.log('✅ Firebase:',cloudData.length,'registros');
+    } else {
+      // Cloud empty - push local data up
+      console.log('ℹ️ Nube vacía, subiendo datos locales:',registros.length,'registros');
+      if(registros.length>0) await syncCloud(uid);
+    }
     nextId=registros.length?Math.max(...registros.map(r=>r.id))+1:1;
-    renderAll();setSyncStatus('synced');
-  }catch(e){console.warn('FB error:',e);loadLocalData();setSyncStatus('offline');}
+    renderAll();
+    setSyncStatus('synced');
+  }catch(e){
+    console.error('❌ Error Firebase:',e.message);
+    setSyncStatus('offline');
+    // Still show local data
+    renderAll();
+  }
 }
 function loadLocal(){loadLocalData();renderAll();}
 function loadLocalData(){
@@ -902,10 +939,29 @@ function loadLocalData(){
 }
 function save(){
   localStorage.setItem(KEY_DATA,JSON.stringify(registros));
-  if(isGoogle&&currentUser){setSyncStatus('syncing');clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncCloud(currentUser.uid),1500);}
+  if(isGoogle&&currentUser&&currentUser.uid){
+    setSyncStatus('syncing');
+    clearTimeout(syncTimer);
+    // Sync immediately for critical saves, debounce for rapid additions
+    syncTimer=setTimeout(()=>syncCloud(currentUser.uid),800);
+  }
 }
 async function syncCloud(uid){
-  try{await window._fb.save(uid,registros);setSyncStatus('synced');}catch(e){setSyncStatus('offline');}
+  if(!uid){setSyncStatus('offline');return;}
+  setSyncStatus('syncing');
+  try{
+    await window._fb.save(uid,registros);
+    setSyncStatus('synced');
+    console.log('✅ Sincronizado con Firebase:',registros.length,'registros');
+  }catch(e){
+    console.error('❌ Error Firebase sync:',e.code,e.message);
+    setSyncStatus('offline');
+    // Retry once after 3 seconds
+    setTimeout(async()=>{
+      try{await window._fb.save(uid,registros);setSyncStatus('synced');console.log('✅ Retry sync OK');}
+      catch(e2){console.error('❌ Retry failed:',e2.message);}
+    },3000);
+  }
 }
 function savePlantillas(){
   localStorage.setItem(KEY_PLANT,JSON.stringify(plantillas));
@@ -957,7 +1013,7 @@ function showPage(page){
   if(idx>=0)document.querySelectorAll('.nav-item')[idx].classList.add('active');
   document.getElementById('topbar-title').textContent=PAGE_TITLES[page]||page;
   const hoy=new Date();document.getElementById('topbar-sub').textContent=`${hoy.getDate()} de ${MESES[hoy.getMonth()]} de ${hoy.getFullYear()}`;
-  if(page==='inicio')renderInicio();
+  if(page==='inicio'){renderInicio();renderPlantillasQuick();}
   if(page==='agregar')renderFormRec();
   if(page==='movimientos'){populateFilters();renderMov();}
   if(page==='resumen'){populateResFilters();renderResumen();}
